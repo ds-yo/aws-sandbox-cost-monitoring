@@ -44,10 +44,10 @@ Claude Code の「ハーネス」（ルール・スキル・フック・メモ�
 
 ## セットアップ
 
-### 1. Python 環境
+### 1. Python 環境（Python 3.12 以上。現在の .venv は 3.14）
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install boto3
+.venv/bin/pip install -r requirements.txt
 ```
 依存は boto3 だけ。Slack への投稿は標準ライブラリの urllib、テストは unittest で書いている。
 
@@ -135,6 +135,56 @@ scripts/run_monthly.sh [YYYY-MM]
 
 ---
 
+## 開発手順（コードを修正するとき）
+
+### 1. 作業前の準備
+```bash
+cd aws-sandbox-cost-monitoring
+source .venv/bin/activate          # 以降は python / pip が .venv のものになる（終了は deactivate）
+pip install -r requirements.txt    # 依存が変わった場合だけ
+scripts/refresh-creds.sh           # AWS にアクセスするスクリプトを動かす場合（有効期限は最大36時間）
+```
+- `activate` しない場合は、コマンドの `python` を `.venv/bin/python` に置き換える。
+- Claude Code は常に `.venv/bin/python scripts/...` の形で実行する（`.claude/settings.json` の許可ルールがこの形を前提にしているため）。
+- `main` に直接コミットしない。作業用のブランチを切る（例: `git switch -c feature/resource-owners`）。
+
+### 2. 修正するときの決まり（詳細は `.claude/rules/python.md`）
+- 依存は boto3 と標準ライブラリだけ。追加したい場合は相談し、`requirements.txt` に書く。
+- 計算ロジック（年度計算・判定・メッセージ組み立て）と I/O（AWS・Slack・ファイル）は関数を分け、計算ロジックには `tests/` にテストを書く。
+- AWS は読み取り専用（get / list / describe / lookup 系のみ）。
+- 予算・宛先などの設定値は `config/budget.json` に書く。コードに直接書かない。シークレットは環境変数か Secrets Manager に置く。
+
+### 3. 動作確認
+```bash
+python -m unittest discover -s tests                     # ユニットテスト（AWS 不要・数秒）
+python scripts/slack_report.py --month 2026-09           # 既存の out/ を使った dry-run（Slack には送らない）
+python scripts/fetch_costs.py --month 2026-09 --force    # 取得処理を変えた場合だけ（CE API 課金 $0.01/回）
+```
+フックを修正した場合は、JSON を標準入力で渡して単体で動かせる。
+```bash
+echo '{"tool_input":{"command":"aws ec2 terminate-instances --instance-ids i-1"}}' | python3 .claude/hooks/guard_bash.py; echo $?   # 2 ならブロック
+```
+フックは `python3`（システムの Python・標準ライブラリだけ）で動くので、`.venv` の外でも動くように書く。
+
+### 4. ルール・スキル・フックを変更するとき
+| 変更するもの | 注意点 |
+|---|---|
+| `.claude/rules/*.md` | 次のセッションから読み込まれる |
+| `.claude/skills/*/SKILL.md` | `description` がスキルを呼び出すきっかけになる。使い方が変わったら README の「使い方」も直す |
+| `.claude/hooks/*.py` | 次のツール実行から反映される |
+| `.claude/settings.json` のフック・権限 | Claude Code を再起動するか、`/hooks` で確認してから反映される |
+
+### 5. コミットする前に
+- [ ] `python -m unittest discover -s tests` がすべて通る（Claude Code で作業している場合は Stop フックでも自動で実行される）
+- [ ] `progress.md` を更新した（`.claude/rules/progress.md`。Claude Code で作業している場合は Stop フックがチェックする）
+- [ ] 使い方・構成が変わったら README.md を更新した
+- [ ] `out/`、`logs/`、`.env`、`.claude/settings.local.json` がコミット対象に入っていない（`.gitignore` 済みだが `git status` で確認する）
+- [ ] AWS キーや Webhook URL がコードやドキュメントに入っていない
+
+Claude Code に修正を依頼する場合も、流れは同じ。ルールに従って修正し、保存時（PostToolUse）と終了時（Stop）にフックが構文・テスト・`progress.md` の更新をチェックする。
+
+---
+
 ## Slack レポートの構成
 
 1. ヘッダー（対象月、確定か速報か）
@@ -168,6 +218,7 @@ aws-sandbox-cost-monitoring/
 ├── README.md                     # このファイル
 ├── CLAUDE.md                     # Claude Code が毎セッション読み込むプロジェクト概要
 ├── progress.md                   # [メモリ] 進捗・意思決定ログ・次にやること
+├── requirements.txt              # Python の依存（boto3 のみ）
 ├── config/
 │   └── budget.json               # 予算・税率・メンション先・稟議フォーム URL
 ├── scripts/

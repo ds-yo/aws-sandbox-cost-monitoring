@@ -1,0 +1,76 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/python scripts/fetch_costs.py:*)",
+      "Bash(.venv/bin/python scripts/validate_forecast.py:*)",
+      "Bash(.venv/bin/python scripts/fetch_breakdown.py:*)",
+      "Bash(.venv/bin/python scripts/inventory.py:*)",
+      "Bash(.venv/bin/python scripts/optimization.py:*)",
+      "Bash(.venv/bin/python scripts/record_forecast.py:*)",
+      "Bash(.venv/bin/python -m unittest:*)",
+      "Edit(out/**)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Edit(.claude/memory/forecast-history.json)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_bash.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_files.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_edit_check.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_check.py\""
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/progress_check.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

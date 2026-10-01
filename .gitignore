@@ -1,0 +1,23 @@
+# 個人設定（コミット不要）
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# 環境変数・シークレット
+.env
+.env.*
+*.pem
+*.key
+
+# OS
+.DS_Store
+
+# レポート出力・ログ（コストデータを含むためコミットしない）
+out/
+logs/

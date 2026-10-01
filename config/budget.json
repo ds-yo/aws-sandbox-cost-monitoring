@@ -1,0 +1,19 @@
+{
+  "fiscal_years": {
+    "FY2026": {
+      "budget_jpy": 2500000,
+      "fx_jpy_per_usd": 150,
+      "note": "予算 250万円。為替レートは暫定値（TODO: 社内の予算換算レートに合わせる）"
+    }
+  },
+  "tax_rate": 0.1,
+  "revision": {
+    "buffer_ratio": 0.1,
+    "round_to_usd": 100,
+    "ringi_form_url": "",
+    "mentions": []
+  },
+  "slack": {
+    "top_services": 5
+  }
+}
